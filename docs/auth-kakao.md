@@ -78,5 +78,5 @@ NEXT_PUBLIC_KAKAO_AUTH_ENABLED=true
 | --- | --- |
 | Kakao OAuth 실제 계정 로그인 | 설정 대기 (자격 증명 필요) |
 | Google 로그인 | 이번 PR 범위 제외 |
-| 프로필/data_accounts 생성 | 마이그레이션 + 콜백 upsert |
+| 프로필/data_accounts 생성 | 트리거 + `ensure_own_data_account()` (잔액 INSERT는 서버 전용 0행만) |
 | 세션 만료/취소 문구 | 구현됨 |

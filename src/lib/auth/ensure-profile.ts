@@ -80,17 +80,9 @@ export async function ensureProfile(
     }
   }
 
-  const { error: dataAccountError } = await supabase.from("data_accounts").upsert(
-    {
-      user_id: user.id,
-      balance_mb: 0,
-      total_charged_mb: 0,
-      version: 0,
-    },
-    {
-      onConflict: "user_id",
-      ignoreDuplicates: true,
-    },
+  // Balance rows are created only via SECURITY DEFINER paths that force zeros.
+  const { error: dataAccountError } = await supabase.rpc(
+    "ensure_own_data_account",
   );
 
   if (dataAccountError) {

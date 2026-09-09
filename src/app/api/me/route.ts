@@ -4,6 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
+const noStore = { "Cache-Control": "private, no-store" };
+
 export async function GET() {
   const supabase = await createClient();
   const {
@@ -22,22 +24,54 @@ export async function GET() {
       },
       {
         status: 401,
-        headers: { "Cache-Control": "private, no-store" },
+        headers: noStore,
       },
     );
   }
 
-  const { data: profile } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select("user_id, display_name, created_at")
     .eq("user_id", user.id)
     .maybeSingle();
 
-  const { data: dataAccount } = await supabase
+  if (profileError) {
+    return NextResponse.json(
+      {
+        error: {
+          code: "PROFILE_LOOKUP_FAILED",
+          message: "프로필을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+          retryable: true,
+        },
+      },
+      {
+        status: 503,
+        headers: noStore,
+      },
+    );
+  }
+
+  const { data: dataAccount, error: dataAccountError } = await supabase
     .from("data_accounts")
     .select("balance_mb, total_charged_mb, version, updated_at")
     .eq("user_id", user.id)
     .maybeSingle();
+
+  if (dataAccountError) {
+    return NextResponse.json(
+      {
+        error: {
+          code: "DATA_ACCOUNT_LOOKUP_FAILED",
+          message: "데이터 잔액을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+          retryable: true,
+        },
+      },
+      {
+        status: 503,
+        headers: noStore,
+      },
+    );
+  }
 
   return NextResponse.json(
     {
@@ -57,11 +91,13 @@ export async function GET() {
               source: "APP_DB",
             }
           : {
+              // Successful empty result: row not created yet (e.g. migration lag).
               balanceMb: 0,
               totalChargedMb: 0,
               version: 0,
               updatedAt: null,
               source: "APP_DB",
+              provisional: true,
             },
         esim: {
           status: "UNKNOWN",
@@ -70,7 +106,7 @@ export async function GET() {
       },
     },
     {
-      headers: { "Cache-Control": "private, no-store" },
+      headers: noStore,
     },
   );
 }
